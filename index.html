@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Body Tracker</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f3; color: #1a1a1a; padding: 1.5rem 1rem; max-width: 600px; margin: 0 auto; }
+h1 { font-size: 18px; font-weight: 500; margin-bottom: 1.5rem; color: #1a1a1a; }
+.tabs { display: flex; gap: 8px; margin-bottom: 1.5rem; }
+.tab { padding: 6px 16px; border: 0.5px solid #ccc; border-radius: 8px; font-size: 13px; cursor: pointer; background: transparent; color: #666; }
+.tab.active { background: #e8e8e6; color: #1a1a1a; font-weight: 500; border-color: #999; }
+.section { display: none; }
+.section.active { display: block; }
+.metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 1.5rem; }
+.metric { background: #e8e8e6; border-radius: 8px; padding: 0.75rem 1rem; }
+.metric-label { font-size: 12px; color: #666; margin-bottom: 4px; }
+.metric-value { font-size: 22px; font-weight: 500; color: #1a1a1a; }
+.metric-sub { font-size: 11px; color: #999; margin-top: 2px; }
+.log-form { background: #fff; border: 0.5px solid #ddd; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; }
+.form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label { font-size: 12px; color: #666; }
+.field input { width: 100%; padding: 6px 10px; font-size: 14px; border: 0.5px solid #ccc; border-radius: 8px; background: #f5f5f3; color: #1a1a1a; }
+.field-full { grid-column: 1 / -1; }
+.option-group { display: flex; gap: 8px; flex-wrap: wrap; }
+.opt-btn { padding: 5px 14px; border: 0.5px solid #ccc; border-radius: 8px; font-size: 13px; cursor: pointer; background: transparent; color: #666; }
+.opt-btn.selected { background: #e8e8e6; color: #1a1a1a; border-color: #999; font-weight: 500; }
+.save-btn { margin-top: 1rem; padding: 8px 20px; background: #e8e8e6; border: 0.5px solid #999; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; color: #1a1a1a; width: 100%; }
+.save-btn:hover { background: #ddd; }
+.chart-card { background: #fff; border: 0.5px solid #ddd; border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; }
+.chart-title { font-size: 11px; font-weight: 500; color: #999; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.06em; }
+.history-table { width: 100%; font-size: 13px; border-collapse: collapse; }
+.history-table th { font-size: 11px; color: #999; text-align: left; padding: 4px 8px; border-bottom: 0.5px solid #eee; font-weight: 400; text-transform: uppercase; letter-spacing: 0.04em; }
+.history-table td { padding: 8px; border-bottom: 0.5px solid #eee; color: #1a1a1a; }
+.history-table tr:last-child td { border-bottom: none; }
+.toast { position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%); background: #e8e8e6; border: 0.5px solid #999; border-radius: 8px; padding: 8px 20px; font-size: 14px; font-weight: 500; color: #1a1a1a; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 100; }
+.toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<h1>Body tracker</h1>
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('log',event)">Log today</button>
+  <button class="tab" onclick="switchTab('charts',event)">Charts</button>
+  <button class="tab" onclick="switchTab('history',event)">History</button>
+</div>
+
+<div id="tab-log" class="section active">
+  <div class="metrics">
+    <div class="metric"><div class="metric-label">Current weight</div><div class="metric-value" id="m-weight">—</div><div class="metric-sub">lbs</div></div>
+    <div class="metric"><div class="metric-label">7-day avg drinks</div><div class="metric-value" id="m-drinks">—</div><div class="metric-sub">per night</div></div>
+    <div class="metric"><div class="metric-label">Days logged</div><div class="metric-value" id="m-days">0</div><div class="metric-sub">total</div></div>
+    <div class="metric"><div class="metric-label">Streak</div><div class="metric-value" id="m-streak">0</div><div class="metric-sub">days</div></div>
+  </div>
+  <div class="log-form">
+    <div class="form-grid">
+      <div class="field"><label>Date</label><input type="date" id="log-date" /></div>
+      <div class="field"><label>Weight (lbs)</label><input type="number" id="log-weight" placeholder="206" step="0.1" min="100" max="400" /></div>
+      <div class="field"><label>Drinks tonight</label><input type="number" id="log-drinks" placeholder="0" min="0" max="20" step="1" /></div>
+      <div class="field field-full">
+        <label>Food today</label>
+        <div class="option-group" id="food-options">
+          <button class="opt-btn" onclick="selectOpt('food','underate',event)">Underate</button>
+          <button class="opt-btn" onclick="selectOpt('food','ate',event)">Ate</button>
+          <button class="opt-btn" onclick="selectOpt('food','overate',event)">Overate</button>
+          <button class="opt-btn" onclick="selectOpt('food','jeez dude',event)">Jeez dude</button>
+        </div>
+      </div>
+      <div class="field field-full">
+        <label>Sleep last night</label>
+        <div class="option-group" id="sleep-options">
+          <button class="opt-btn" onclick="selectOpt('sleep','great',event)">Great</button>
+          <button class="opt-btn" onclick="selectOpt('sleep','solid',event)">Solid</button>
+          <button class="opt-btn" onclick="selectOpt('sleep','ok',event)">Ok</button>
+          <button class="opt-btn" onclick="selectOpt('sleep','rough',event)">Rough</button>
+        </div>
+      </div>
+    </div>
+    <button class="save-btn" onclick="saveEntry()">Save entry</button>
+  </div>
+</div>
+
+<div id="tab-charts" class="section">
+  <div class="chart-card"><div class="chart-title">Weight over time</div><div style="position:relative;width:100%;height:220px;"><canvas id="chart-weight"></canvas></div></div>
+  <div class="chart-card"><div class="chart-title">Drinks per night</div><div style="position:relative;width:100%;height:200px;"><canvas id="chart-drinks"></canvas></div></div>
+  <div class="chart-card"><div class="chart-title">Food</div><div style="position:relative;width:100%;height:200px;"><canvas id="chart-food"></canvas></div></div>
+  <div class="chart-card"><div class="chart-title">Sleep</div><div style="position:relative;width:100%;height:200px;"><canvas id="chart-sleep"></canvas></div></div>
+</div>
+
+<div id="tab-history" class="section">
+  <div class="chart-card">
+    <table class="history-table">
+      <thead><tr><th>Date</th><th>Weight</th><th>Drinks</th><th>Food</th><th>Sleep</th></tr></thead>
+      <tbody id="history-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const STORAGE_KEY = 'wes-body-tracker-v1';
+let entries = [];
+let selected = { food: null, sleep: null };
+let weightChart, drinksChart, foodChart, sleepChart;
+
+const foodScore  = { 'underate': 2, 'ate': 4, 'overate': 2, 'jeez dude': 1 };
+const foodDot    = { 'underate': '#BA7517', 'ate': '#639922', 'overate': '#E24B4A', 'jeez dude': '#A32D2D' };
+const foodLabels = { 'underate': 'Underate', 'ate': 'Ate', 'overate': 'Overate', 'jeez dude': 'Jeez dude' };
+const sleepScore = { 'great': 4, 'solid': 3, 'ok': 2, 'rough': 1 };
+const sleepDot   = { 'great': '#639922', 'solid': '#639922', 'ok': '#BA7517', 'rough': '#E24B4A' };
+const sleepLabels = ['','Rough','Ok','Solid','Great'];
+
+function loadEntries() {
+  try { const r = localStorage.getItem(STORAGE_KEY); if (r) entries = JSON.parse(r); } catch(e) { entries = []; }
+  updateSummary(); renderHistory();
+}
+
+function saveEntries() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(entries)); } catch(e) {}
+}
+
+function selectOpt(type, val, e) {
+  selected[type] = val;
+  document.getElementById(type+'-options').querySelectorAll('.opt-btn').forEach(b => b.classList.remove('selected'));
+  e.target.classList.add('selected');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function saveEntry() {
+  const date = document.getElementById('log-date').value;
+  const weight = parseFloat(document.getElementById('log-weight').value);
+  const drinks = parseInt(document.getElementById('log-drinks').value);
+  if (!date) { showToast('Pick a date first'); return; }
+  const entry = { date, weight: isNaN(weight) ? null : weight, drinks: isNaN(drinks) ? 0 : drinks, food: selected.food, sleep: selected.sleep };
+  const idx = entries.findIndex(e => e.date === date);
+  if (idx >= 0) entries[idx] = entry; else entries.push(entry);
+  entries.sort((a,b) => a.date.localeCompare(b.date));
+  saveEntries(); updateSummary(); renderHistory();
+  showToast('Saved');
+  document.getElementById('log-weight').value = '';
+  document.getElementById('log-drinks').value = '';
+  selected = { food: null, sleep: null };
+  document.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('selected'));
+}
+
+function calcStreak() {
+  if (!entries.length) return 0;
+  let streak = 0; let cur = new Date();
+  while (true) {
+    const d = cur.toISOString().slice(0,10);
+    if (entries.find(e => e.date === d)) { streak++; cur.setDate(cur.getDate()-1); } else break;
+  }
+  return streak;
+}
+
+function updateSummary() {
+  const withWeight = entries.filter(e => e.weight);
+  document.getElementById('m-weight').textContent = withWeight.length ? withWeight[withWeight.length-1].weight.toFixed(1) : '—';
+  const last7 = entries.slice(-7);
+  const avg = last7.length ? (last7.reduce((s,e) => s+(e.drinks||0),0)/last7.length) : null;
+  document.getElementById('m-drinks').textContent = avg !== null ? avg.toFixed(1) : '—';
+  document.getElementById('m-days').textContent = entries.length;
+  document.getElementById('m-streak').textContent = calcStreak();
+}
+
+function renderHistory() {
+  const tbody = document.getElementById('history-body');
+  if (!entries.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:2rem;color:#999;">No entries yet</td></tr>'; return; }
+  tbody.innerHTML = [...entries].reverse().slice(0,60).map(e => {
+    const fd = e.food ? `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${foodDot[e.food]||'#888'};margin-right:5px;"></span>${foodLabels[e.food]||e.food}` : '—';
+    const sd = e.sleep ? `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${sleepDot[e.sleep]||'#888'};margin-right:5px;"></span>${e.sleep}` : '—';
+    return `<tr><td>${e.date}</td><td>${e.weight?e.weight.toFixed(1):'—'}</td><td>${e.drinks??'—'}</td><td>${fd}</td><td>${sd}</td></tr>`;
+  }).join('');
+}
+
+function buildCharts() {
+  const labels = entries.map(e => e.date.slice(5));
+  const textColor = '#999'; const gridColor = 'rgba(0,0,0,0.06)';
+  const base = (cb) => ({ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{ticks:{color:textColor,font:{size:11},maxTicksLimit:12,autoSkip:true},grid:{color:gridColor}}, y:{ticks:{color:textColor,font:{size:11},...(cb?{callback:cb}:{})},grid:{color:gridColor}} } });
+
+  if (weightChart) weightChart.destroy();
+  weightChart = new Chart(document.getElementById('chart-weight'), { type:'line', data:{labels, datasets:[{data:entries.map(e=>e.weight), borderColor:'#378ADD', backgroundColor:'rgba(55,138,221,0.08)', tension:0.35, fill:true, pointRadius:3, pointBackgroundColor:'#378ADD', spanGaps:true}]}, options:base() });
+
+  if (drinksChart) drinksChart.destroy();
+  const dd = entries.map(e=>e.drinks??null);
+  drinksChart = new Chart(document.getElementById('chart-drinks'), { type:'bar', data:{labels, datasets:[{data:dd, backgroundColor:dd.map(d=>d===0?'#639922':d<=2?'#BA7517':'#E24B4A'), borderRadius:3}]}, options:{...base(), scales:{...base().scales, y:{...base().scales.y, min:0}}} });
+
+  const fax = {1:'Jeez dude',2:'Under/over',4:'Ate'};
+  if (foodChart) foodChart.destroy();
+  foodChart = new Chart(document.getElementById('chart-food'), { type:'line', data:{labels, datasets:[{data:entries.map(e=>e.food?foodScore[e.food]:null), borderColor:'#1D9E75', backgroundColor:'rgba(29,158,117,0.08)', tension:0.3, fill:true, pointRadius:3, pointBackgroundColor:'#1D9E75', spanGaps:true}]}, options:{...base(v=>fax[v]||''), scales:{...base().scales, y:{min:0.5,max:4.5,ticks:{color:textColor,font:{size:11},callback:v=>fax[v]||''},grid:{color:gridColor}}}} });
+
+  if (sleepChart) sleepChart.destroy();
+  sleepChart = new Chart(document.getElementById('chart-sleep'), { type:'line', data:{labels, datasets:[{data:entries.map(e=>e.sleep?sleepScore[e.sleep]:null), borderColor:'#7F77DD', backgroundColor:'rgba(127,119,221,0.08)', tension:0.3, fill:true, pointRadius:3, pointBackgroundColor:'#7F77DD', spanGaps:true}]}, options:{...base(v=>sleepLabels[Math.round(v)]||''), scales:{...base().scales, y:{min:0.5,max:4.5,ticks:{color:textColor,font:{size:11},callback:v=>sleepLabels[Math.round(v)]||''},grid:{color:gridColor}}}} });
+}
+
+function switchTab(tab, e) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  e.target.classList.add('active');
+  document.getElementById('tab-'+tab).classList.add('active');
+  if (tab==='charts') buildCharts();
+}
+
+document.getElementById('log-date').value = new Date().toISOString().slice(0,10);
+loadEntries();
+</script>
+</body>
+</html>
