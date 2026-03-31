@@ -8,8 +8,8 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f3; color: #1a1a1a; padding: 1.5rem 1rem; max-width: 600px; margin: 0 auto; }
 h1 { font-size: 18px; font-weight: 500; margin-bottom: 1.5rem; color: #1a1a1a; }
-.tabs { display: flex; gap: 8px; margin-bottom: 1.5rem; }
-.tab { padding: 6px 16px; border: 0.5px solid #ccc; border-radius: 8px; font-size: 13px; cursor: pointer; background: transparent; color: #666; }
+.tabs { display: flex; gap: 6px; margin-bottom: 1.5rem; flex-wrap: wrap; }
+.tab { padding: 6px 14px; border: 0.5px solid #ccc; border-radius: 8px; font-size: 13px; cursor: pointer; background: transparent; color: #666; }
 .tab.active { background: #e8e8e6; color: #1a1a1a; font-weight: 500; border-color: #999; }
 .section { display: none; }
 .section.active { display: block; }
@@ -22,7 +22,7 @@ h1 { font-size: 18px; font-weight: 500; margin-bottom: 1.5rem; color: #1a1a1a; }
 .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
 .field { display: flex; flex-direction: column; gap: 4px; }
 .field label { font-size: 12px; color: #666; }
-.field input { width: 100%; padding: 6px 10px; font-size: 14px; border: 0.5px solid #ccc; border-radius: 8px; background: #f5f5f3; color: #1a1a1a; }
+.field input, .field select { width: 100%; padding: 6px 10px; font-size: 14px; border: 0.5px solid #ccc; border-radius: 8px; background: #f5f5f3; color: #1a1a1a; }
 .field-full { grid-column: 1 / -1; }
 .option-group { display: flex; gap: 8px; flex-wrap: wrap; }
 .opt-btn { padding: 5px 14px; border: 0.5px solid #ccc; border-radius: 8px; font-size: 13px; cursor: pointer; background: transparent; color: #666; }
@@ -37,12 +37,28 @@ h1 { font-size: 18px; font-weight: 500; margin-bottom: 1.5rem; color: #1a1a1a; }
 .history-table tr:last-child td { border-bottom: none; }
 .toast { position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%); background: #e8e8e6; border: 0.5px solid #999; border-radius: 8px; padding: 8px 20px; font-size: 14px; font-weight: 500; color: #1a1a1a; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 100; }
 .toast.show { opacity: 1; }
+.movement-row { display: flex; gap: 8px; align-items: flex-end; margin-bottom: 10px; flex-wrap: wrap; }
+.movement-row .field { flex: 1; min-width: 80px; }
+.movement-row .field.wide { flex: 2; min-width: 140px; }
+.add-movement-btn { padding: 5px 14px; border: 0.5px solid #ccc; border-radius: 8px; font-size: 13px; cursor: pointer; background: transparent; color: #666; margin-top: 0.5rem; }
+.remove-btn { padding: 6px 10px; border: 0.5px solid #ccc; border-radius: 8px; font-size: 13px; cursor: pointer; background: transparent; color: #999; align-self: flex-end; margin-bottom: 1px; }
+.new-movement-input { display: none; width: 100%; padding: 6px 10px; font-size: 14px; border: 0.5px solid #ccc; border-radius: 8px; background: #f5f5f3; color: #1a1a1a; margin-top: 4px; }
+.overload-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; margin-bottom: 1.5rem; }
+.overload-card { background: #e8e8e6; border-radius: 8px; padding: 0.75rem 1rem; }
+.overload-name { font-size: 11px; color: #999; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
+.overload-weight { font-size: 20px; font-weight: 500; color: #1a1a1a; }
+.overload-meta { font-size: 11px; color: #999; margin-top: 2px; }
+.overload-delta { font-size: 11px; margin-top: 3px; }
+.delta-up { color: #639922; }
+.delta-same { color: #999; }
+.delta-down { color: #E24B4A; }
 </style>
 </head>
 <body>
 <h1>Body tracker</h1>
 <div class="tabs">
   <button class="tab active" onclick="switchTab('log',event)">Log today</button>
+  <button class="tab" onclick="switchTab('workout',event)">Workout</button>
   <button class="tab" onclick="switchTab('charts',event)">Charts</button>
   <button class="tab" onclick="switchTab('history',event)">History</button>
 </div>
@@ -82,19 +98,34 @@ h1 { font-size: 18px; font-weight: 500; margin-bottom: 1.5rem; color: #1a1a1a; }
   </div>
 </div>
 
+<div id="tab-workout" class="section">
+  <div class="overload-grid" id="overload-grid"></div>
+  <div class="log-form">
+    <div class="form-grid">
+      <div class="field field-full"><label>Date</label><input type="date" id="workout-date" /></div>
+    </div>
+    <div id="workout-movements"></div>
+    <button class="add-movement-btn" onclick="addMovementRow()">+ Add movement</button>
+    <button class="save-btn" onclick="saveWorkout()">Save workout</button>
+  </div>
+</div>
+
 <div id="tab-charts" class="section">
   <div class="chart-card"><div class="chart-title">Weight over time</div><div style="position:relative;width:100%;height:220px;"><canvas id="chart-weight"></canvas></div></div>
   <div class="chart-card"><div class="chart-title">Drinks per night</div><div style="position:relative;width:100%;height:200px;"><canvas id="chart-drinks"></canvas></div></div>
   <div class="chart-card"><div class="chart-title">Food</div><div style="position:relative;width:100%;height:200px;"><canvas id="chart-food"></canvas></div></div>
   <div class="chart-card"><div class="chart-title">Sleep</div><div style="position:relative;width:100%;height:200px;"><canvas id="chart-sleep"></canvas></div></div>
+  <div id="workout-charts"></div>
 </div>
 
 <div id="tab-history" class="section">
+  <div class="chart-card" style="margin-bottom:1rem;">
+    <div class="chart-title" style="margin-bottom:0.75rem;">Body log</div>
+    <table class="history-table"><thead><tr><th>Date</th><th>Weight</th><th>Drinks</th><th>Food</th><th>Sleep</th></tr></thead><tbody id="history-body"></tbody></table>
+  </div>
   <div class="chart-card">
-    <table class="history-table">
-      <thead><tr><th>Date</th><th>Weight</th><th>Drinks</th><th>Food</th><th>Sleep</th></tr></thead>
-      <tbody id="history-body"></tbody>
-    </table>
+    <div class="chart-title" style="margin-bottom:0.75rem;">Workouts</div>
+    <table class="history-table"><thead><tr><th>Date</th><th>Movement</th><th>Weight</th><th>Sets</th><th>Reps</th></tr></thead><tbody id="workout-history-body"></tbody></table>
   </div>
 </div>
 
@@ -103,9 +134,14 @@ h1 { font-size: 18px; font-weight: 500; margin-bottom: 1.5rem; color: #1a1a1a; }
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
 const STORAGE_KEY = 'wes-body-tracker-v1';
+const WORKOUT_KEY = 'wes-workout-tracker-v1';
+const MOVEMENTS_KEY = 'wes-movements-v1';
+
 let entries = [];
+let workouts = [];
+let movements = ['Incline press','T-bar row','Hex bar deadlift','Leg press','Lat pulldown'];
 let selected = { food: null, sleep: null };
-let weightChart, drinksChart, foodChart, sleepChart;
+let charts = {};
 
 const foodScore  = { 'underate': 2, 'ate': 4, 'overate': 2, 'jeez dude': 1 };
 const foodDot    = { 'underate': '#BA7517', 'ate': '#639922', 'overate': '#E24B4A', 'jeez dude': '#A32D2D' };
@@ -113,15 +149,18 @@ const foodLabels = { 'underate': 'Underate', 'ate': 'Ate', 'overate': 'Overate',
 const sleepScore = { 'great': 4, 'solid': 3, 'ok': 2, 'rough': 1 };
 const sleepDot   = { 'great': '#639922', 'solid': '#639922', 'ok': '#BA7517', 'rough': '#E24B4A' };
 const sleepLabels = ['','Rough','Ok','Solid','Great'];
+const chartColors = ['#378ADD','#1D9E75','#7F77DD','#BA7517','#E24B4A','#639922','#D4537E','#5DCAA5'];
 
-function loadEntries() {
-  try { const r = localStorage.getItem(STORAGE_KEY); if (r) entries = JSON.parse(r); } catch(e) { entries = []; }
-  updateSummary(); renderHistory();
+function loadAll() {
+  try { const r = localStorage.getItem(STORAGE_KEY); if(r) entries = JSON.parse(r); } catch(e) {}
+  try { const r = localStorage.getItem(WORKOUT_KEY); if(r) workouts = JSON.parse(r); } catch(e) {}
+  try { const r = localStorage.getItem(MOVEMENTS_KEY); if(r) movements = JSON.parse(r); } catch(e) {}
+  updateSummary(); renderHistory(); renderOverloadGrid(); addMovementRow();
 }
 
-function saveEntries() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(entries)); } catch(e) {}
-}
+function saveEntries() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(entries)); } catch(e) {} }
+function saveWorkouts() { try { localStorage.setItem(WORKOUT_KEY, JSON.stringify(workouts)); } catch(e) {} }
+function saveMovements() { try { localStorage.setItem(MOVEMENTS_KEY, JSON.stringify(movements)); } catch(e) {} }
 
 function selectOpt(type, val, e) {
   selected[type] = val;
@@ -131,8 +170,7 @@ function selectOpt(type, val, e) {
 
 function showToast(msg) {
   const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
+  t.textContent = msg; t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2200);
 }
 
@@ -141,78 +179,186 @@ function saveEntry() {
   const weight = parseFloat(document.getElementById('log-weight').value);
   const drinks = parseInt(document.getElementById('log-drinks').value);
   if (!date) { showToast('Pick a date first'); return; }
-  const entry = { date, weight: isNaN(weight) ? null : weight, drinks: isNaN(drinks) ? 0 : drinks, food: selected.food, sleep: selected.sleep };
-  const idx = entries.findIndex(e => e.date === date);
-  if (idx >= 0) entries[idx] = entry; else entries.push(entry);
+  const entry = { date, weight: isNaN(weight)?null:weight, drinks: isNaN(drinks)?0:drinks, food: selected.food, sleep: selected.sleep };
+  const idx = entries.findIndex(e => e.date===date);
+  if (idx>=0) entries[idx]=entry; else entries.push(entry);
   entries.sort((a,b) => a.date.localeCompare(b.date));
-  saveEntries(); updateSummary(); renderHistory();
-  showToast('Saved');
-  document.getElementById('log-weight').value = '';
-  document.getElementById('log-drinks').value = '';
-  selected = { food: null, sleep: null };
-  document.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('selected'));
+  saveEntries(); updateSummary(); renderHistory(); showToast('Saved');
+  document.getElementById('log-weight').value='';
+  document.getElementById('log-drinks').value='';
+  selected={food:null,sleep:null};
+  document.querySelectorAll('.opt-btn').forEach(b=>b.classList.remove('selected'));
+}
+
+function addMovementRow(name, weight, sets, reps) {
+  name=name||''; weight=weight||''; sets=sets||''; reps=reps||'';
+  const container = document.getElementById('workout-movements');
+  const id = 'r'+Date.now()+Math.floor(Math.random()*1000);
+  const opts = movements.map(m=>`<option value="${m}" ${m===name?'selected':''}>${m}</option>`).join('');
+  const div = document.createElement('div');
+  div.className='movement-row'; div.dataset.id=id;
+  div.innerHTML=`
+    <div class="field wide">
+      <label>Movement</label>
+      <select id="sel-${id}" onchange="checkNewMovement('${id}')">${opts}<option value="__new__">+ New movement...</option></select>
+      <input class="new-movement-input" id="new-${id}" placeholder="Movement name" onblur="confirmNewMovement('${id}')" />
+    </div>
+    <div class="field"><label>Weight (lbs)</label><input type="number" id="w-${id}" value="${weight}" placeholder="135" min="0" step="2.5" /></div>
+    <div class="field"><label>Sets</label><input type="number" id="s-${id}" value="${sets}" placeholder="4" min="1" max="20" /></div>
+    <div class="field"><label>Reps</label><input type="number" id="r-${id}" value="${reps}" placeholder="8" min="1" max="100" /></div>
+    <button class="remove-btn" onclick="this.closest('.movement-row').remove()">✕</button>
+    <div id="hint-${id}" style="font-size:11px;color:#999;margin-top:3px;flex-basis:100%;"></div>
+  `;
+  container.appendChild(div);
+  updateHint(id, name||movements[0]);
+}
+
+function checkNewMovement(id) {
+  const sel = document.getElementById('sel-'+id);
+  const inp = document.getElementById('new-'+id);
+  if (sel.value==='__new__') { inp.style.display='block'; inp.focus(); }
+  else { inp.style.display='none'; updateHint(id, sel.value); }
+}
+
+function confirmNewMovement(id) {
+  const inp = document.getElementById('new-'+id);
+  const val = inp.value.trim();
+  if (!val) return;
+  if (!movements.includes(val)) { movements.push(val); saveMovements(); }
+  const sel = document.getElementById('sel-'+id);
+  const opt = document.createElement('option');
+  opt.value=val; opt.textContent=val; opt.selected=true;
+  sel.insertBefore(opt, sel.lastElementChild);
+  sel.value=val; inp.style.display='none';
+  updateHint(id, val);
+}
+
+function updateHint(id, movementName) {
+  const hint = document.getElementById('hint-'+id);
+  if (!hint) return;
+  const last = workouts.filter(w=>w.movement===movementName).sort((a,b)=>b.date.localeCompare(a.date))[0];
+  hint.textContent = last ? `Last: ${last.weight} lbs × ${last.sets} sets × ${last.reps} reps (${last.date.slice(5)})` : 'No previous data';
+}
+
+function saveWorkout() {
+  const date = document.getElementById('workout-date').value;
+  if (!date) { showToast('Pick a date first'); return; }
+  const rows = document.querySelectorAll('#workout-movements .movement-row');
+  const newEntries = [];
+  rows.forEach(row => {
+    const id = row.dataset.id;
+    const sel = document.getElementById('sel-'+id);
+    const movement = sel && sel.value!=='__new__' ? sel.value : '';
+    const weight = parseFloat(document.getElementById('w-'+id)?.value);
+    const sets = parseInt(document.getElementById('s-'+id)?.value);
+    const reps = parseInt(document.getElementById('r-'+id)?.value);
+    if (movement && !isNaN(weight) && !isNaN(sets) && !isNaN(reps)) newEntries.push({date,movement,weight,sets,reps});
+  });
+  if (!newEntries.length) { showToast('Add at least one complete movement'); return; }
+  workouts = workouts.filter(w=>!(w.date===date && newEntries.find(e=>e.movement===w.movement)));
+  workouts.push(...newEntries);
+  workouts.sort((a,b)=>a.date.localeCompare(b.date)||a.movement.localeCompare(b.movement));
+  saveWorkouts(); renderHistory(); renderOverloadGrid(); showToast('Workout saved');
+  document.getElementById('workout-movements').innerHTML='';
+  addMovementRow();
+}
+
+function renderOverloadGrid() {
+  const grid = document.getElementById('overload-grid');
+  const logged = [...new Set(workouts.map(w=>w.movement))];
+  if (!logged.length) { grid.innerHTML=''; return; }
+  grid.innerHTML = logged.map(m => {
+    const sessions = workouts.filter(w=>w.movement===m).sort((a,b)=>a.date.localeCompare(b.date));
+    const last = sessions[sessions.length-1];
+    const prev = sessions.length>1 ? sessions[sessions.length-2] : null;
+    let deltaHtml='';
+    if (prev) {
+      const diff = last.weight-prev.weight;
+      if (diff>0) deltaHtml=`<div class="overload-delta delta-up">▲ ${diff} lbs</div>`;
+      else if (diff<0) deltaHtml=`<div class="overload-delta delta-down">▼ ${Math.abs(diff)} lbs</div>`;
+      else deltaHtml=`<div class="overload-delta delta-same">Same as last</div>`;
+    }
+    return `<div class="overload-card"><div class="overload-name">${m}</div><div class="overload-weight">${last.weight} lbs</div><div class="overload-meta">${last.sets}×${last.reps} · ${last.date.slice(5)}</div>${deltaHtml}</div>`;
+  }).join('');
 }
 
 function calcStreak() {
   if (!entries.length) return 0;
-  let streak = 0; let cur = new Date();
-  while (true) {
-    const d = cur.toISOString().slice(0,10);
-    if (entries.find(e => e.date === d)) { streak++; cur.setDate(cur.getDate()-1); } else break;
-  }
+  let streak=0; let cur=new Date();
+  while(true){const d=cur.toISOString().slice(0,10);if(entries.find(e=>e.date===d)){streak++;cur.setDate(cur.getDate()-1);}else break;}
   return streak;
 }
 
 function updateSummary() {
-  const withWeight = entries.filter(e => e.weight);
-  document.getElementById('m-weight').textContent = withWeight.length ? withWeight[withWeight.length-1].weight.toFixed(1) : '—';
-  const last7 = entries.slice(-7);
-  const avg = last7.length ? (last7.reduce((s,e) => s+(e.drinks||0),0)/last7.length) : null;
-  document.getElementById('m-drinks').textContent = avg !== null ? avg.toFixed(1) : '—';
-  document.getElementById('m-days').textContent = entries.length;
-  document.getElementById('m-streak').textContent = calcStreak();
+  const ww=entries.filter(e=>e.weight);
+  document.getElementById('m-weight').textContent=ww.length?ww[ww.length-1].weight.toFixed(1):'—';
+  const l7=entries.slice(-7);
+  const avg=l7.length?(l7.reduce((s,e)=>s+(e.drinks||0),0)/l7.length):null;
+  document.getElementById('m-drinks').textContent=avg!==null?avg.toFixed(1):'—';
+  document.getElementById('m-days').textContent=entries.length;
+  document.getElementById('m-streak').textContent=calcStreak();
 }
 
 function renderHistory() {
-  const tbody = document.getElementById('history-body');
-  if (!entries.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:2rem;color:#999;">No entries yet</td></tr>'; return; }
-  tbody.innerHTML = [...entries].reverse().slice(0,60).map(e => {
-    const fd = e.food ? `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${foodDot[e.food]||'#888'};margin-right:5px;"></span>${foodLabels[e.food]||e.food}` : '—';
-    const sd = e.sleep ? `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${sleepDot[e.sleep]||'#888'};margin-right:5px;"></span>${e.sleep}` : '—';
+  const tbody=document.getElementById('history-body');
+  if(!entries.length){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:2rem;color:#999;font-size:14px;">No entries yet</td></tr>';return;}
+  tbody.innerHTML=[...entries].reverse().slice(0,60).map(e=>{
+    const fd=e.food?`<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${foodDot[e.food]||'#888'};margin-right:5px;"></span>${foodLabels[e.food]||e.food}`:'—';
+    const sd=e.sleep?`<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${sleepDot[e.sleep]||'#888'};margin-right:5px;"></span>${e.sleep}`:'—';
     return `<tr><td>${e.date}</td><td>${e.weight?e.weight.toFixed(1):'—'}</td><td>${e.drinks??'—'}</td><td>${fd}</td><td>${sd}</td></tr>`;
   }).join('');
+  const wb=document.getElementById('workout-history-body');
+  if(!workouts.length){wb.innerHTML='<tr><td colspan="5" style="text-align:center;padding:2rem;color:#999;font-size:14px;">No workouts yet</td></tr>';return;}
+  wb.innerHTML=[...workouts].reverse().slice(0,60).map(w=>`<tr><td>${w.date}</td><td>${w.movement}</td><td>${w.weight}</td><td>${w.sets}</td><td>${w.reps}</td></tr>`).join('');
 }
 
 function buildCharts() {
-  const labels = entries.map(e => e.date.slice(5));
-  const textColor = '#999'; const gridColor = 'rgba(0,0,0,0.06)';
-  const base = (cb) => ({ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{ticks:{color:textColor,font:{size:11},maxTicksLimit:12,autoSkip:true},grid:{color:gridColor}}, y:{ticks:{color:textColor,font:{size:11},...(cb?{callback:cb}:{})},grid:{color:gridColor}} } });
+  const labels=entries.map(e=>e.date.slice(5));
+  const tc='#999'; const gc='rgba(0,0,0,0.06)';
+  const base=(cb)=>({responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:tc,font:{size:11},maxTicksLimit:12,autoSkip:true},grid:{color:gc}},y:{ticks:{color:tc,font:{size:11},...(cb?{callback:cb}:{})},grid:{color:gc}}}});
 
-  if (weightChart) weightChart.destroy();
-  weightChart = new Chart(document.getElementById('chart-weight'), { type:'line', data:{labels, datasets:[{data:entries.map(e=>e.weight), borderColor:'#378ADD', backgroundColor:'rgba(55,138,221,0.08)', tension:0.35, fill:true, pointRadius:3, pointBackgroundColor:'#378ADD', spanGaps:true}]}, options:base() });
+  if(charts.weight)charts.weight.destroy();
+  charts.weight=new Chart(document.getElementById('chart-weight'),{type:'line',data:{labels,datasets:[{data:entries.map(e=>e.weight),borderColor:'#378ADD',backgroundColor:'rgba(55,138,221,0.08)',tension:0.35,fill:true,pointRadius:3,pointBackgroundColor:'#378ADD',spanGaps:true}]},options:base()});
 
-  if (drinksChart) drinksChart.destroy();
-  const dd = entries.map(e=>e.drinks??null);
-  drinksChart = new Chart(document.getElementById('chart-drinks'), { type:'bar', data:{labels, datasets:[{data:dd, backgroundColor:dd.map(d=>d===0?'#639922':d<=2?'#BA7517':'#E24B4A'), borderRadius:3}]}, options:{...base(), scales:{...base().scales, y:{...base().scales.y, min:0}}} });
+  if(charts.drinks)charts.drinks.destroy();
+  const dd=entries.map(e=>e.drinks??null);
+  charts.drinks=new Chart(document.getElementById('chart-drinks'),{type:'bar',data:{labels,datasets:[{data:dd,backgroundColor:dd.map(d=>d===0?'#639922':d<=2?'#BA7517':'#E24B4A'),borderRadius:3}]},options:{...base(),scales:{...base().scales,y:{min:0,ticks:{color:tc,font:{size:11}},grid:{color:gc}}}}});
 
-  const fax = {1:'Jeez dude',2:'Under/over',4:'Ate'};
-  if (foodChart) foodChart.destroy();
-  foodChart = new Chart(document.getElementById('chart-food'), { type:'line', data:{labels, datasets:[{data:entries.map(e=>e.food?foodScore[e.food]:null), borderColor:'#1D9E75', backgroundColor:'rgba(29,158,117,0.08)', tension:0.3, fill:true, pointRadius:3, pointBackgroundColor:'#1D9E75', spanGaps:true}]}, options:{...base(v=>fax[v]||''), scales:{...base().scales, y:{min:0.5,max:4.5,ticks:{color:textColor,font:{size:11},callback:v=>fax[v]||''},grid:{color:gridColor}}}} });
+  const fax={1:'Jeez dude',2:'Under/over',4:'Ate'};
+  if(charts.food)charts.food.destroy();
+  charts.food=new Chart(document.getElementById('chart-food'),{type:'line',data:{labels,datasets:[{data:entries.map(e=>e.food?foodScore[e.food]:null),borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,0.08)',tension:0.3,fill:true,pointRadius:3,pointBackgroundColor:'#1D9E75',spanGaps:true}]},options:{...base(v=>fax[v]||''),scales:{...base().scales,y:{min:0.5,max:4.5,ticks:{color:tc,font:{size:11},callback:v=>fax[v]||''},grid:{color:gc}}}}});
 
-  if (sleepChart) sleepChart.destroy();
-  sleepChart = new Chart(document.getElementById('chart-sleep'), { type:'line', data:{labels, datasets:[{data:entries.map(e=>e.sleep?sleepScore[e.sleep]:null), borderColor:'#7F77DD', backgroundColor:'rgba(127,119,221,0.08)', tension:0.3, fill:true, pointRadius:3, pointBackgroundColor:'#7F77DD', spanGaps:true}]}, options:{...base(v=>sleepLabels[Math.round(v)]||''), scales:{...base().scales, y:{min:0.5,max:4.5,ticks:{color:textColor,font:{size:11},callback:v=>sleepLabels[Math.round(v)]||''},grid:{color:gridColor}}}} });
+  if(charts.sleep)charts.sleep.destroy();
+  charts.sleep=new Chart(document.getElementById('chart-sleep'),{type:'line',data:{labels,datasets:[{data:entries.map(e=>e.sleep?sleepScore[e.sleep]:null),borderColor:'#7F77DD',backgroundColor:'rgba(127,119,221,0.08)',tension:0.3,fill:true,pointRadius:3,pointBackgroundColor:'#7F77DD',spanGaps:true}]},options:{...base(v=>sleepLabels[Math.round(v)]||''),scales:{...base().scales,y:{min:0.5,max:4.5,ticks:{color:tc,font:{size:11},callback:v=>sleepLabels[Math.round(v)]||''},grid:{color:gc}}}}});
+
+  const wcd=document.getElementById('workout-charts');
+  wcd.innerHTML='';
+  [...new Set(workouts.map(w=>w.movement))].forEach((m,i)=>{
+    const mw=workouts.filter(w=>w.movement===m);
+    const cid='wc'+i;
+    const card=document.createElement('div');
+    card.className='chart-card';
+    card.innerHTML=`<div class="chart-title">${m}</div><div style="position:relative;width:100%;height:200px;"><canvas id="${cid}"></canvas></div>`;
+    wcd.appendChild(card);
+    const color=chartColors[i%chartColors.length];
+    setTimeout(()=>{
+      if(charts['w'+i])charts['w'+i].destroy();
+      charts['w'+i]=new Chart(document.getElementById(cid),{type:'line',data:{labels:mw.map(w=>w.date.slice(5)),datasets:[{data:mw.map(w=>w.weight),borderColor:color,backgroundColor:color+'22',tension:0.3,fill:true,pointRadius:4,pointBackgroundColor:color}]},options:{...base(),plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{const w=mw[ctx.dataIndex];return `${w.weight} lbs × ${w.sets}×${w.reps}`;}}}}}}); 
+    },50);
+  });
 }
 
-function switchTab(tab, e) {
+function switchTab(tab,e) {
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   e.target.classList.add('active');
   document.getElementById('tab-'+tab).classList.add('active');
-  if (tab==='charts') buildCharts();
+  if(tab==='charts')buildCharts();
 }
 
-document.getElementById('log-date').value = new Date().toISOString().slice(0,10);
-loadEntries();
+document.getElementById('log-date').value=new Date().toISOString().slice(0,10);
+document.getElementById('workout-date').value=new Date().toISOString().slice(0,10);
+loadAll();
 </script>
 </body>
 </html>
